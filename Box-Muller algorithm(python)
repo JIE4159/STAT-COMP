@@ -1,0 +1,25 @@
+import numpy as np
+from numpy import random, sqrt, log, sin, cos, pi
+from pylab import show, hist, subplot, figure
+##problem 2  Write codes in python to generate standard normal random variables using the Box-Muller algorithm
+##transformation function
+def normavar(u,v):
+    x=sqrt(-2*log(u))*cos(2*pi*v)
+    y=sqrt(-2*log(u))*sin(2*pi*v)
+    return x,y
+##sampling u and v from uniform distr from 0 to 1
+    u1=random.uniform(0,1,1000)
+    v1=random.uniform(0,1,1000)
+x,y=normavar(u1,v1)
+#3ploting the valuew before and after the transformation
+figure()
+subplot(221)#the first row of graphs
+hist(u1)
+subplot(222)
+hist(v1)
+subplot(223)#the second contains
+hist(x,density=True)
+subplot(224)
+hist(y,density=True)
+show()
+[x,y]
