@@ -1,0 +1,391 @@
+
+import numpy as np    
+import pandas as pd 
+import matplotlib.pyplot as plt
+from scipy import stats
+from sklearn.model_selection import train_test_split
+from math import copysign, hypot
+
+import scipy.linalg as linalg
+charlie=pd.read_csv("D:\statistic classes\statistical computing\homework\charlie.csv",sep=',')
+print(charlie)
+charlie=pd.DataFrame(data=charlie)
+target={'Original':1,'New':-1}
+charlie['Data']=charlie['Data'].map(target)
+X,original=charlie.ix[0:3,2:6].values,charlie.ix[0:3,0].values
+
+##########################  question a #############################
+# use scipy.linalg to find decomposition of A to Q,R
+def decomp_A(A):
+    Q,R=linalg.qr(A)
+    return Q,R
+Q0=decomp_A(X)[0]
+R0=decomp_A(X)[1]
+
+
+##adding one row to update dataset and find R and Q 
+def givens(a,b):
+    if b==0:
+        c=1
+        s=0
+    elif abs(b)>abs(a):
+        t=-a/b
+        s=1/(np.sqrt(1+t**2))
+        c=s*t
+    else:
+        t=-b/a
+        c=1/(np.sqrt(1+t**2))
+        s=c*t
+    return(c,s)
+
+def add_R(R,u):
+    n=np.shape(R)[1]
+    m=np.shape(R)[0]
+    add_R=np.zeros((m+1,n))
+    c=np.zeros(n)
+    s=np.zeros(n)
+    for j in range(n):
+        (c[j],s[j])=givens(R[j,j],u[j])
+        add_R[j,j]=c[j]*R[j,j]-s[j]*u[j]
+        #update jthe row of R and u
+        t1=R[j,j+1:n]
+        t2=u[j+1:n]
+        add_R[j,j+1:n]=c[j]*t1-s[j]*t2
+        u[j+1:n]=s[j]*t1+c[j]*t2
+    return add_R,u,c,s
+
+##renew Q after updated
+def add_QQ(Q,s,c,m0):
+    m=m0
+    add_Q=np.identity(m+1)
+    add_Q[0:m,0:m]=Q
+    k=m+1
+    for i in range(4):
+        t1=add_Q[0:m+1,i]
+        t2=add_Q[0:m+1,m]
+        add_Q[0:m+1,i]=c[i]*t1-s[i]*t2
+        add_Q[0:m+1,m]=s[i]*t1+c[i]*t2
+    return add_Q
+
+##updated Q and R after adding 5th rows 
+##compare updating R with R computed by linalg.qr
+u_0=charlie.ix[4,2:6].values  
+Decom=add_R(R0,u_0)[0]
+A5=charlie.ix[0:4,2:6].values
+cc=add_R(R0,u_0)[2]
+ss=add_R(R0,u_0)[3]
+Decom1=add_QQ(Q0,ss,cc,4)
+R5=decomp_A(A5)[1]
+Q5=decomp_A(A5)[0]
+
+###updated Q and R after adding 6th rows 
+u_666=charlie.ix[5,2:6].values
+X1=charlie.ix[0:4,2:6]
+Q1=decomp_A(X1)[0]
+R1=decomp_A(X1)[1]
+Decom5=add_R(R1,u_666)
+update_row_R=Decom5[0]
+ss51=Decom5[3]
+cc51=Decom5[2]
+update_row_Q=add_QQ(Q0,ss51,cc51,4)
+##############question (b)################################       
+ def add_col(Q,R,u):
+     m,n=np.shape(R)
+     add_R=np.zeros((m,n+1))
+     add_Q=np.zeros((m,m))
+     uu=np.dot(Q.T,u)
+     c=np.zeros(m)
+     s=np.zeros(m)
+     for i in range(m-1,n,-1):
+         ##compute updated R
+         (c[i],s[i])=givens(uu[i-1],uu[i])
+         uu[i-1]=c[i]*uu[i-1]-s[i]*uu[i]
+         ##update R if there is a nonzero row
+         rot_mat=np.zeros((2,2))
+         rot_mat[0,:]=c[i],s[i]
+         rot_mat[1,:]=-s[i],c[i]
+         R[i-1:i+1,i-1:n+1]=np.dot(rot_mat.T,R[i-1:i+1,i-1:n+1])
+         add_R=np.triu(np.hstack((R,uu)))
+        ##compute updated Q
+         Q[0:m,i-1:i+1]=np.dot(Q[0:m,i-1:i+1],rot_mat)
+         add_Q=Q
+     return add_R,add_Q
+ 
+col2_X=charlie.ix[:,2:4].values
+col3_X=charlie.ix[:,2:5].values
+col_u3=charlie.ix[:,4:5].values
+col_R3=decomp_A(col2_X)[1]
+col_Q3=decomp_A(col2_X)[0]
+###results 
+add_col(col_Q3,col_R3,col_u3)
+
+##compare results add one columns to 3 columns
+
+col_R33=decomp_A(col3_X)[1]
+col_Q33=decomp_A(col3_X)[0]
+
+##add one columns to 4 columns
+col_u4=charlie.ix[:,5:6].values
+add_col(col_Q33,col_R33,col_u4)##use algorithm get Q R after add one columns
+#### computing the R Q by linalg.qr
+col4_X=charlie.ix[:,2:6].values             
+col_R44=decomp_A(col4_X)[1]
+col_Q44=decomp_A(col4_X)[0]
+
+
+
+####################  question (c)###############################
+##compute alpha
+
+def kernel(x,y,sigma):
+    K=np.zeros((len(x),len(y)))
+    for i in range(len(x)):
+        for j in range(len(y)):
+            delta=x[i]-y[j]
+            sumsquare=float(delta.dot(delta.T))
+            K[i,j]=np.exp(-0.5*sumsquare/(sigma**2))
+    return K
+Z=charlie.ix[0:6,2:6].values 
+sigma=5**0.5
+K=kernel(Z,Z,sigma)
+#K is a 20*20 matrix
+lk=np.ones((len(Z),1))   #lk denotes lower kj=k(xj,xj)
+##Hmatrix
+C=5
+H7=K+0.5*np.eye(7)/C
+    
+ 
+##add5th rows to first 4 rows sequentially
+H4=H7[0:4,0:4]
+u_5=H7[4,0:4]
+H5=H7[0:5,0:4]
+u_6=H7[5,0:4]
+H6=H7[0:6,0:4]
+u_7=H7[6,0:4]
+#### find Q and R after adding fifth row to 4 rows  
+H_R4=decomp_A(H4)[1]
+H_Q4=decomp_A(H4)[0]
+H_update_R5=add_R(H_R4,u_5)
+cc5=H_update_R5[2]
+ss5=H_update_R5[3]
+H_update_Q5=add_QQ(H_Q4,ss,cc,4)
+###########find Q and R after adding 5th column to 5*4 columns
+ def add_col1(Q,R,u):
+     m,n=np.shape(R)
+     add_R=np.zeros((m,n+1))
+     add_Q=np.zeros((m,m))
+     uu=np.dot(Q.T,u)
+     c=np.zeros(m)
+     s=np.zeros(m)
+     for i in range(4,5):
+         ##compute updated R
+         (c[i],s[i])=givens(uu[i-1],uu[i])
+         uu[i-1]=c[i]*uu[i-1]-s[i]*uu[i]
+         ##update R if there is a nonzero row
+         rot_mat=np.zeros((2,2))
+         rot_mat[0,:]=c[i],s[i]
+         rot_mat[1,:]=-s[i],c[i]
+         R[i-1:i+1,i-1:n+1]=np.dot(rot_mat.T,R[i-1:i+1,i-1:n+1])
+         add_R=np.triu(np.hstack((R,uu)))
+        ##compute updated Q
+         Q[0:m,i-1:i+1]=np.dot(Q[0:m,i-1:i+1],rot_mat)
+         add_Q=Q
+     return add_R,add_Q
+ 
+    
+H_5_4=H7[0:5,0:4]
+H_R54=decomp_A(H_5_4)[1]
+H_Q54=decomp_A(H_5_4)[0]
+col_u55=H7[0:5,4:5]
+result55=add_col1(H_Q54,H_R54,col_u55)
+H_update_Q5=result55[1]
+H_update_R5=result55[0]
+##########################compute alpha5############
+H_5_5=H7[0:5,0:5]
+H_R55=decomp_A(H_5_5)[1]
+H_Q55=decomp_A(H_5_5)[0]
+H55=np.dot(H_R55,H_Q55)
+lk55=np.ones((len(H55),1))
+def alpha(Hmatr,lk):
+    length=len(Hmatr)
+    Ematr=np.ones((length,1))
+    ET=Ematr.T
+    HI=np.linalg.inv(Hmatr)
+    Sol1=(2-np.dot(np.dot(ET,HI),lk))/(np.dot(np.dot(ET,HI),Ematr))
+    Sol2=lk+Sol1*Ematr
+    alpha=0.5*np.dot(HI,Sol2)
+    return alpha  
+
+al5=alpha(H55,lk55)[4]   
+H_5_5=H7[0:5,0:5]
+H_R55=decomp_A(H_5_5)[1]
+H_Q55=decomp_A(H_5_5)[0]
+H55=np.dot(H_R55,H_Q55)
+lk55=np.ones((len(H55),1))
+##################compute alpha6
+## add 6th  row
+u65=H7[5,0:6]
+result_addrow_65=add_R(H_R55,u65)
+H_update_Q65=result_addrow_65[1]
+H_update_R65=result_addrow_65[0]
+## add 6 th column 
+
+H_6_5=H7[0:6,0:5]
+H_R65=decomp_A(H_6_5)[1]
+H_Q65=decomp_A(H_6_5)[0]
+col_u66=H7[0:6,5:6]
+result66=add_col1(H_Q65,H_R65,col_u66)
+H_update_Q6=result66[1]
+H_update_R6=result66[0]
+## compute alpha6
+H66=np.dot(H_update_Q6,H_update_R6)
+lk66=np.ones((len(H66),1))
+al6=alpha(H66,lk66)
+##################compute alpha7
+##add row
+u76=H7[6,0:6]
+result_addrow_76=add_R(H_R65,u76)
+H_update_Q76=result_addrow_76[1]
+H_update_R76=result_addrow_76[0]
+## add 6 th column 
+
+H_7_6=H7[0:7,0:6]
+H_R76=decomp_A(H_7_6)[1]
+H_Q76=decomp_A(H_7_6)[0]
+col_u77=H7[0:7,6:7]
+result77=add_col1(H_Q76,H_R76,col_u77)
+H_update_Q7=result77[1]
+H_update_R7=result77[0]
+## compute alpha6
+H77=np.dot(H_update_Q7,H_update_R7)
+lk77=np.ones((len(H77),1))
+al7=alpha(H77,lk77)[4]
+
+#######################   question (d)#################################
+###compute distance d and radius Rsquare
+##compute the radius Rsquare   function
+
+H77=np.dot(H_update_Q7,H_update_R7)
+alf1=alpha(H77,lk77)[0:4]
+alf=alpha(H77,lk77)[4:7]
+Z=charlie.ix[0:3,2:6].values 
+Z_test=charlie.ix[4:6,2:6].values 
+sigma=5**0.5
+K=kernel(Z,Z,sigma)
+lk=np.ones((len(Z),1))  
+C=5
+
+def KF3(a,x1,x2,sigma):
+    m,n=np.shape(x1)           # the third part sum(alpha*alpha*K)
+    kf3=np.zeros((4,4))
+    for i in range(4):
+        for j in range(4):
+            kf3[i,j] +=a[j]*a[i]*kernel(x1,x2,sigma)[i,j]
+    return kf3
+KF33=sum(sum(KF3(alf1,Z,Z,sigma))) 
+def KF2(a,x1,x2,sigma):            # the second part sum(alpha*K)
+    kf2=np.zeros(4)
+    for i in range(4):
+        for j in range(4):
+            kf2[i] +=-2*a[j]*kernel(x1,x2,sigma)[i,j]
+    return kf2 
+KF22=np.mean(KF2(alf1,Z,Z,sigma))
+
+def R_square(x1,x2):
+    R_square=x1+x2+1
+    return R_square
+R2=R_square(KF33,KF22)
+
+## compute the distance D
+KKKKK=kernel(Z_test,Z,sigma)
+np.dot(KKKKK,alf1)
+Distance=-2*np.dot(KKKKK,alf1)+np.ones((3,1)) 
+      
+def err(x,y):
+    count=0
+    for i in range(len(x)):
+        if x[i]<y:
+            count +=1
+    err=count/len(x)
+    return err
+
+print('The error rates is %s when sigma=5^(0.5) and c=8' %err(Distance,R2)) 
+
+###################    question (e)   ###################################
+##find H inverse
+H_inv=np.linalg.inv(H7)
+##add 6th row and colum to matrix
+H_7_6_inv=H_inv[0:7,0:6]
+H_R76_inv=decomp_A(H_7_6_inv)[1]
+H_Q76_inv=decomp_A(H_7_6_inv)[0]
+col_u77_inv=H_inv[0:7,6:7]
+result77_inv=add_col(H_Q76_inv,H_R76_inv,col_u77_inv)
+H_update_Q7_inv=result77_inv[1]
+H_update_R7_inv=result77_inv[0]
+## compute alpha6
+H77_inv=np.dot(H_update_Q7_inv,H_update_R7_inv)
+H7777=np.linalg.inv(H_inv)
+lk7777=np.ones((len(H7777),1))
+al7_inv=alpha(H7777,lk7777)
+
+
+###################  problem 2  question (e)   ################################
+#searching tuning parameters C and sigma in ls-ocsvm(RBF)
+print(__doc__)
+
+
+import pylab as pl
+from sklearn.svm import SVC
+from sklearn.datasets import load_iris
+from sklearn.cross_validation import StratifiedKFold
+from sklearn.grid_search import GridSearchCV
+from sklearn import svm
+
+xx, yy = np.meshgrid(np.linspace(-4, 8, 500), np.linspace(-2, 8, 500))
+X_train,Y_train=charlie.ix[0:30,6:8].values,charlie.ix[0:30,0].values
+X_test,Y_test=charlie.ix[20:30,6:8].values,charlie.ix[20:30,0].values
+
+
+
+##find best parameters from grid searching 
+def para_sle(x,y,n):
+    CS=[1,3,5,7,9,10]
+    sigma=[0.001,1,2,4,6,8]
+    param_grid={'C':CS,'gamma':sigma}
+    grid_search = GridSearchCV(svm.SVC(kernel='rbf'), param_grid, cv=n)
+    grid_search.fit(x,y)
+    grid_search.best_params_
+    return grid_search.best_params_
+
+para_sle(X_train,Y_train,5)
+
+## fit one class svm model and predict outliers
+XX_train,YY_train=charlie.ix[0:19,6:8].values,charlie.ix[0:19,0].values
+clf=svm.OneClassSVM(nu=0.1,kernel="rbf",gamma=0.001,shrinking=True)
+clf.fit(XX_train)
+y_pred_train=clf.predict(XX_train)
+y_pred_test=clf.predict(X_test)
+
+Z = clf.decision_function(np.c_[xx.ravel(), yy.ravel()])
+Z = Z.reshape(xx.shape)
+
+plt.title("Novelty Detection")
+
+a = plt.contour(xx, yy, Z, levels=[0], linewidths=2, colors='darkred')
+
+
+s = 40
+b1 = plt.scatter(XX_train[:, 0], XX_train[:, 1], c='white', s=s, edgecolors='k')
+b2 = plt.scatter(X_test[:, 0], X_test[:, 1], c='blueviolet', s=s,
+                 edgecolors='k')
+
+plt.axis('tight')
+plt.xlim((-5, 5))
+plt.ylim((-5, 5))
+plt.legend([a.collections[0], b1, b2, 7 ],
+           ["learned frontier", "training observations",
+            "new regular observations", "new abnormal observations"],
+           loc="upper left",
+           prop=matplotlib.font_manager.FontProperties(size=11))
+
+plt.show()
