@@ -1,0 +1,9 @@
+##problem 4
+n=10000
+y=np.random.uniform(0,1,n)
+x=-1*(y>=1/2)*np.log(2-2*y)+(y<1/2)*np.log(2*y)
+figure()
+subplot(121)#the first row of graphs
+hist(x)
+subplot(122)
+hist(y)
