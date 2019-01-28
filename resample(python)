@@ -1,0 +1,75 @@
+##problem1 question 1
+###import dataset
+import numpy as np    
+import pandas as pd 
+import matplotlib.pyplot as plt
+from scipy import stats
+from sklearn.model_selection import train_test_split
+from pylab import show, hist, subplot, figure
+mtcars=pd.read_csv("C:\\Users\\xiong\\Desktop\\midexam1\\mtcars.csv", sep=',')
+print(mtcars)
+mpg=mtcars.ix[:,1]
+
+##bootstrap estimates CV ]
+B=200
+n=len(mpg)
+boot_mpg=np.random.choice(mpg,(n,B))
+##compute estimate CV by boot_mpg
+def cv_est_star(arr,B):
+    cv_est=np.zeros(B)
+    for i in range(B):
+        cv_est[i]=np.std(arr[:,i])/np.mean(arr[:,i])
+    return cv_est    
+cv_est_star(boot_mpg,B)
+## compute the bias and standard error of boot_CV
+def boot_cv_se(x,y,B):
+    boot_cv=cv_est_star(x,B) 
+    boot_bias=np.mean(boot_cv)-np.std(y)/np.mean(y)
+    boot_se=stats.sem(boot_cv)
+    print ("The bootstrap estimate of the bias is %s and standard error of bootstrap CV is %s"%(boot_bias,boot_se))
+    return (boot_bias,boot_se)
+
+boot_cv_se1=boot_cv_se(boot_mpg,mpg,B)
+
+## problem1 question 2
+## compute the jacknife CV 
+idx=np.arange(n)
+jackknife=np.zeros(32)
+for i in range(32):
+    jackknife[i]=np.std(mpg[idx!=i])/np.mean(mpg[idx!=i])
+print(jackknife)
+## compute the bias and standard error of jackknife_CV
+def jackknife_cv_se(x,y): 
+    cv_mpg=np.std(y)/np.mean(y)
+    jackknife_bias=31*(np.mean(x)-cv_mpg)   #(N-1)=31
+    jackknife_se=stats.sem(x)
+    print ("The Jackknife estimate of the bias is %s and standard error of Jackknife CV is %s"%(jackknife_bias,jackknife_se))
+    return (jackknife_bias,jackknife_se) 
+print(jackknife_cv_se(jackknife,mpg)) 
+
+##problem1 question 3
+##construct a 95% confidenc interval for the coefficient of variation of 'mpg'.
+##firstly obtain bootstrap estimates of cv*
+cv_est=np.std(mpg)/np.mean(mpg)
+cv_est_star=cv_est_star(boot_mpg,B)
+nest_boot_cv=np.random.choice(cv_est_star,(n,B))
+nest_boot_se=np.zeros(B)
+for i in range(B):
+    nest_boot_se[i]=stats.sem(nest_boot_cv[:,i])
+## compute t1 to t200
+tstat=np.zeros(B)
+for i in range(B):
+    tstat[i]=(cv_est_star[i]-cv_est)/(nest_boot_se[i])
+## sort t and find quantile of 97.55 and 2.5% 
+from scipy.stats import t
+tstat.sort()
+t_bound=np.percentile(tstat,[2.5,97.5])
+##compute the limits of CVhat
+se_boot=boot_cv_se1[1]
+Lower=cv_est-t_bound[1]*se_boot
+Upper=cv_est-t_bound[0]*se_boot
+print('the bootstrap t confidence interval of CV is(%s,%s)' %(Lower,Upper))
+## bootstrap quantile CI
+cv_est_star.sort()
+cv_est_star_CI=np.percentile(cv_est_star,[2.5,97.5])
+print('The bootstrap quantile confidence interval of CV is %s'%cv_est_star_CI)
