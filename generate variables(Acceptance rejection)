@@ -1,0 +1,24 @@
+import scipy.stats 
+from scipy.stats import norm
+from scipy.stats import uniform
+
+
+n=5000
+naccept=0     #counter for accepted
+ntrial=0     #iterations
+ran=[]
+
+while (naccept<n):
+    u=np.random.uniform(0,1,1)
+    ntrial +=1
+    x=np.random.exponential(1,1) #random variable from g(x)
+    if ((x>=0)*np.exp(-(1/2)*x**2+x-0.5)>u):
+        ##we accept x
+        ran.append(x)
+        naccept +=1
+ran=np.asarray(ran)
+ntrial
+hist(ran,density=True,bins='auto',label='acceptance random variable')
+xval=np.linspace(0,4,100)
+y=2*norm.pdf(xval)
+plt.plot(xval,y)
