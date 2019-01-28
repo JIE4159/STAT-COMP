@@ -1,0 +1,63 @@
+
+n=100
+a=30
+b=60
+m=10000
+x=np.zeros((m,2))
+for i in range(1,m):
+    xt=x[i-1,:]
+    xt[0]=np.random.binomial(n,xt[1],1)
+    xt[1]=np.random.beta(xt[0]+a,n-xt[0]+b,1)
+    x[i,:]=xt
+x1=x[:,0]
+x2=x[:,1] 
+np.corrcoef(x1,x2)   
+plt.scatter(x1,x2,alpha=0.05,color='r')
+##plot contour of density for verification
+np.mean(x,axis=0)
+##problem 3.2 problem 9.9 p278
+#MH sampler to generate a normally distributed sample
+from scipy.stats import norm
+import pandas as pd
+def gelmann(psi):
+    n=np.shape(psi)[0]
+    k=np.shape(psi)[1]
+    psi_means=np.mean(psi,axis=1)  ##row means
+    B=n*np.var(psi_means)   ##between variance est  
+    psi_w=np.var(psi,axis=0)           ##within variance
+    W=np.mean(psi_w)              #within est
+    v_hat=W*(n-1)/n+(B/n)        #upper variance est
+    r_hat=v_hat/W
+    return r_hat
+##write M-H sampler as a function normal.chain
+def normal_chain(sigma,n,x1):
+    ##generate a Metroplis chain for normal (0,1)
+    #with normal(x[t],sigma) proposal distribution and starting value x1
+    x=np.zeros(n)
+    x[0]=x1
+    u=np.random.uniform(0,1,n)
+    for i in range(1,n):
+        xt=x[i-1]
+        y=np.random.normal(x1,sigma,1)
+        r1=norm.pdf(y,0,1)*norm.pdf(xt,y,sigma)
+        r2=norm.pdf(xt,0,1)*norm.pdf(y,xt,sigma)
+        r=r1/r2
+        if u[i]<r:
+            x[i]=y
+        else:
+            x[i]=xt
+    return x
+## apply to different initial values
+x0=(-10, -5, 5, 10)
+sigma1=0.2
+k=4
+n=15000
+b=1000
+X=np.zeros((k,n))
+for i in range(k):
+    X[i,]=normal_chain(sigma1,n,x0[i])
+psi1=X.T
+for i in range(4):
+    for j in range(1,n+1):
+        psi1[i,]=psi1[i,]/j
+print(gelmann(psi1))    ## compute R statistics 
