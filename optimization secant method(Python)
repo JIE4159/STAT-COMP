@@ -1,0 +1,13 @@
+def secant_method(f, x0, x1, max_iter=100, tolerance = 1e-5):
+    steps_taken = 1
+    while steps_taken < max_iter and abs(x1-x0) > tolerance:
+        x2 = x1 - ( (f(x1) * (x1 - x0)) / (f(x1) - f(x0)) )
+        x1, x0 = x2, x1
+        steps_taken += 1
+    return x2, steps_taken
+ 
+f = lambda x: (1+1/x-np.log(x))/((1+x)**2)
+
+root, steps = secant_method(f, 1.5, 2)
+print ("root is:", root)
+print ("steps taken:", steps) 
