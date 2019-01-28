@@ -1,0 +1,19 @@
+n=1000
+r=4
+beta=2
+lambda1=np.random.gamma(r,beta,n)
+#now supply the sample of lambda's as the parameter of exponential distribution
+x=np.random.exponential(lambda1,n)
+
+#compare with orginal exponential distribution
+meanmix=np.mean(x)
+varmix=np.var(x)
+lambdam=np.mean(lambda1)
+meanexp=np.mean(np.random.exponential(lambdam,1000))
+varexp=np.var(np.random.exponential(lambdam,1000))
+print('mixture method  mean  is %s, the oringnal mean is %s' %(meanmix,meanexp))
+print('mixture method  variance  is %s, the oringnal variance is %s' %(varmix,varexp))
+       
+##drawing the density line plot
+plt.hist(x,bins='auto',density=True)
+
